@@ -16,6 +16,8 @@ td {
   width: 100px;
   height: 100px;
   border: 1px solid #222;
+  font-size: 3rem;
+  text-align: center;
 }
 
 td:first-of-type {
