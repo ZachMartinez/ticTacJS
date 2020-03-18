@@ -44,3 +44,7 @@ button {
   background:#333;
   border: none;
 }
+
+.hidden {
+  display: none;
+}

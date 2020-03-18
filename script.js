@@ -1,4 +1,4 @@
-const Square = (pos) => {
+const Square = pos => {
   let value = null;
 
   const getValue = () => value;
@@ -18,56 +18,6 @@ const Square = (pos) => {
     getPos
   };
 };
-
-const gameboard = (() => {
-  const display = document.querySelector("#message");
-  const squares = [...document.querySelectorAll(".cell")];
-  const squareData = [];
-  const watchers = [];
-
-  let message = "X moves first. Click on a square to start.";
-
-  squares.forEach((square, i) => {
-    squareData[i] = Square(i);
-    square.addEventListener("click", e => publish(e));
-  });
-
-  const addWatcher = obj => watchers.push(obj);
-
-  const publish = e => {
-    if (watchers.length > 0) {
-      var output = e;
-
-      watchers.forEach(watcher => watcher.notify(output));
-    }
-  };
-
-  const square = i => squareData[i];
-
-  const render = () => {
-    squares.forEach((square, i) => {
-      square.innerHTML = squareData[i].getValue();
-    });
-
-    display.innerHTML = message;
-  };
-
-  const setMessage = msg => (message = msg);
-
-  const count = () => squareData.length;
-
-  const isFull = () => squareData.every(square => square.getValue() != null)
-
-  return {
-    render,
-    square,
-    addWatcher,
-    setMessage,
-    count,
-    isFull
-  };
-})();
-
 const Player = (name, mark) => {
   const winningPositions = [
     [0, 1, 2],
@@ -106,63 +56,117 @@ const Player = (name, mark) => {
   };
 };
 
+const gameboard = (() => {
+  const squares = [...document.querySelectorAll(".cell")];
+  const squareData = [];
+  const watchers = [];
+
+  squares.forEach((square, i) => {
+    squareData[i] = Square(i);
+    square.addEventListener("click", e => publish(e));
+  });
+
+  const addWatcher = obj => watchers.push(obj);
+
+  const publish = e => {
+    if (watchers.length > 0) {
+      var output = e;
+
+      watchers.forEach(watcher => watcher.notify(output));
+    }
+  };
+
+  const square = i => squareData[i];
+
+  const render = () => {
+    squares.forEach((square, i) => {
+      square.innerHTML = squareData[i].getValue();
+    });
+  };
+
+  const count = () => squareData.length;
+
+  const isFull = () => squareData.every(square => square.getValue() != null);
+
+  return {
+    render,
+    square,
+    addWatcher,
+    count,
+    isFull
+  };
+})();
+
+const gameDisplay = (() => {
+  const DOMelement = document.querySelector("#message");
+  const message = "Enter the names of the players";
+
+  const setMessage = (msg) => message = msg;
+  const render = () => DOMelement.innerHTML = message;
+
+  return {
+    setMessage,
+    render
+  }
+})();
+
 const game = (() => {
   const playerX = Player("X", "X");
   const playerO = Player("O", "O");
   const board = gameboard;
+  const display = gameDisplay;
   let running = false;
   let currentPlayer = playerX;
   let winner = null;
 
-  const playTurn = (square) => {
+  const playTurn = square => {
     if (square.getValue() == null) {
       square.setValue(currentPlayer.getMark());
       currentPlayer.play(square.getPos());
-      
+
       if (currentPlayer.isWinner()) {
         winner = currentPlayer;
         endGame();
       } else {
-        if (board.isFull())
-          endGame();
-        else
-          resetRound();
+        if (board.isFull()) endGame();
+        else resetRound();
       }
-    } 
+    }
   };
 
   const resetRound = () => {
     let nextPlayer = currentPlayer === playerX ? playerO : playerX;
-    
-    board.setMessage( `${nextPlayer.getName()}'s turn, click on where you want to place your mark.` );
+
+    display.setMessage(
+      `${nextPlayer.getName()}'s turn, click on where you want to place your mark.`
+    );
 
     currentPlayer = nextPlayer;
-  }
+  };
 
   const endGame = () => {
     let msg;
 
-    if (winner)
-      msg = `${winner.getName()} won!`;
+    if (winner) msg = `${winner.getName()} won!`;
     else {
       msg = `It's a tie!`;
     }
-    
-    board.setMessage(msg);
+
+    display.setMessage(msg);
     running = false;
-  }
-  
+  };
+
   const notify = e => {
     if (running) {
-      let square = board.square(e.target.dataset.number)
+      let square = board.square(e.target.dataset.number);
       playTurn(square);
     }
 
     board.render();
   };
 
-  const obj = { 
-    notify,
+  const obj = {
+    notify
   };
   board.addWatcher(obj);
   board.render();
