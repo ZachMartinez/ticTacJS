@@ -61,7 +61,6 @@ const gameboard = (() => {
   return {
     render,
     square,
-    watchers,
     addWatcher,
     setMessage,
     count,
@@ -111,11 +110,7 @@ const game = (() => {
   const playerX = Player("X", "X");
   const playerO = Player("O", "O");
   const board = gameboard;
-  const state = {
-    running: 1,
-    over: 2
-  };
-  let currentState = state.running;
+  let running = false;
   let currentPlayer = playerX;
   let winner = null;
 
@@ -145,26 +140,29 @@ const game = (() => {
   }
 
   const endGame = () => {
+    let msg;
+
     if (winner)
-      board.setMessage( `${winner.getName()} won!` );
-    else
-      board.setMessage( `It's a tie!` );
+      msg = `${winner.getName()} won!`;
+    else {
+      msg = `It's a tie!`;
+    }
+    
+    board.setMessage(msg);
+    running = false;
   }
   
   const notify = e => {
-    if (currentState === state.running) {
+    if (running) {
       let square = board.square(e.target.dataset.number)
       playTurn(square);
-    }
-    if (currentState === state.over) {
-
     }
 
     board.render();
   };
 
   const obj = { 
-    notify, 
+    notify,
   };
   board.addWatcher(obj);
   board.render();
