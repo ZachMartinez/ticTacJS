@@ -1,40 +1,49 @@
-const Square = () => {
+const Square = (pos) => {
   let value = null;
 
   const getValue = () => value;
-  const setValue = (val) => { if (!value) value = val };
-  
+  const setValue = val => {
+    if (!value) {
+      value = val;
+    } else {
+      return false;
+    }
+  };
+
+  const getPos = () => pos;
+
   return {
     getValue,
-    setValue
-  }
+    setValue,
+    getPos
+  };
 };
 
 const gameboard = (() => {
   const display = document.querySelector("#message");
-  let message = "Click start to play";
   const squares = [...document.querySelectorAll(".cell")];
   const squareData = [];
   const watchers = [];
 
+  let message = "X moves first. Click on a square to start.";
+
   squares.forEach((square, i) => {
-    squareData[i] = Square();
-    square.addEventListener( "click", (e) => publish(e) );
+    squareData[i] = Square(i);
+    square.addEventListener("click", e => publish(e));
   });
 
-  const addWatcher = (obj) => watchers.push(obj);
-  
+  const addWatcher = obj => watchers.push(obj);
 
-  const publish = (e) => { 
-    if ( watchers.length > 0 ) {
-      var output = square(e.target);
+  const publish = e => {
+    if (watchers.length > 0) {
+      var output = e;
 
-      watchers.forEach((watcher) => watcher.notify(output));
+      watchers.forEach(watcher => watcher.notify(output));
     }
   };
-  
-  const square = (i) => squareData[i]; 
-  
+
+  const square = i => squareData[i];
+
   const render = () => {
     squares.forEach((square, i) => {
       square.innerHTML = squareData[i].getValue();
@@ -43,7 +52,11 @@ const gameboard = (() => {
     display.innerHTML = message;
   };
 
-  const setMessage = (msg) => message = msg;
+  const setMessage = msg => (message = msg);
+
+  const count = () => squareData.length;
+
+  const isFull = () => squareData.every(square => square.getValue() != null)
 
   return {
     render,
@@ -51,76 +64,109 @@ const gameboard = (() => {
     watchers,
     addWatcher,
     setMessage,
-  }
+    count,
+    isFull
+  };
 })();
 
 const Player = (name, mark) => {
   const winningPositions = [
-    [0,1,2],
-    [3,4,5],
-    [6,7,8],
-    [0,3,6],
-    [1,4,7],
-    [2,5,8],
-    [0,4,8],
-    [2,4,6]
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
   ];
   const markedSquares = [];
-  
   const getName = () => name;
   const getMark = () => mark;
   const getMarkedSquares = () => markedSquares;
 
-  const play = (pos) => {
+  const play = pos => {
     markedSquares.push(pos);
   };
 
   const isWinner = () => {
     let output = false;
-    winningPositions.forEach((postion)  => {
-      if ( postion.every((i) => markedSquares.includes(i)) )
-        output = true;
+    winningPositions.forEach(postion => {
+      if (postion.every(i => markedSquares.includes(i))) output = true;
     });
 
     return output;
   };
-  
+
   return {
     getName,
     getMark,
     getMarkedSquares,
     play,
-    isWinner,
-  }
+    isWinner
+  };
 };
 
 const game = (() => {
-  const playerX = Player("human", "X");
-  const playerO = Player("computer", "O")
+  const playerX = Player("X", "X");
+  const playerO = Player("O", "O");
   const board = gameboard;
   const state = {
-    new: 0,
     running: 1,
     over: 2
-  }
-  let currentState = state.new;
-
-  const notify = (square) => { 
-   if ( currentState === state.running ) {
-     square.setValue(currentPlayer.getMark());
-     board.render(); 
-   }
   };
-  
+  let currentState = state.running;
   let currentPlayer = playerX;
-  
-  return {
-    playerX,
-    playerO,
-    board,
-    notify
-  }
-})();
+  let winner = null;
 
-game.board.addWatcher(game);
-game.board.render();
+  const playTurn = (square) => {
+    if (square.getValue() == null) {
+      square.setValue(currentPlayer.getMark());
+      currentPlayer.play(square.getPos());
+      
+      if (currentPlayer.isWinner()) {
+        winner = currentPlayer;
+        endGame();
+      } else {
+        if (board.isFull())
+          endGame();
+        else
+          resetRound();
+      }
+    } 
+  };
+
+  const resetRound = () => {
+    let nextPlayer = currentPlayer === playerX ? playerO : playerX;
+    
+    board.setMessage( `${nextPlayer.getName()}'s turn, click on where you want to place your mark.` );
+
+    currentPlayer = nextPlayer;
+  }
+
+  const endGame = () => {
+    if (winner)
+      board.setMessage( `${winner.getName()} won!` );
+    else
+      board.setMessage( `It's a tie!` );
+  }
+  
+  const notify = e => {
+    if (currentState === state.running) {
+      let square = board.square(e.target.dataset.number)
+      playTurn(square);
+    }
+    if (currentState === state.over) {
+
+    }
+
+    board.render();
+  };
+
+  const obj = { 
+    notify, 
+  };
+  board.addWatcher(obj);
+  board.render();
+  return obj;
+})();
