@@ -45,6 +45,24 @@ button {
   border: none;
 }
 
+label {
+  padding-right: 0.5rem;
+}
+
 .hidden {
   display: none;
+}
+
+#message {
+  text-align: center;
+}
+
+#input {
+  width: 100%;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+#start {
+  margin-top: 1rem;
 }

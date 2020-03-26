@@ -1,25 +1,63 @@
-const Square = pos => {
-  let value = null;
+const makeCell = (value = null) => {
+  const setValue = str => (value ? false : (value = str));
 
   const getValue = () => value;
-  const setValue = val => {
-    if (!value) {
-      value = val;
-    } else {
-      return false;
-    }
-  };
-
-  const getPos = () => pos;
 
   return {
     getValue,
-    setValue,
-    getPos
+    setValue
   };
 };
-const Player = (name, mark) => {
-  const winningPositions = [
+
+const gameBoard = (() => {
+  const elements = [...document.querySelectorAll("td")];
+  let cells = elements.map(element => {
+    return makeCell();
+  });
+  const listeners = [];
+
+  const render = () => {
+    elements.forEach((el, i) => {
+      el.innerHTML = cells[i].getValue();
+    });
+  };
+
+  const getCell = i => cells[i];
+
+  const getCellValues = () => cells.map(cell => cell.getValue());
+
+  const isFull = () => cells.every(cell => cell.getValue() != null);
+
+  const isEmpty = () => cells.every(cell => cell.getValue() == null);
+
+  const wipe = () => cells = cells.map(cell => { return makeCell() });
+
+  const shout = e => {
+    listeners.forEach(listener => {
+      listener.listen(e.target.dataset.number);
+    });
+  };
+
+  const addListener = obj => listeners.push(obj);
+
+  elements.forEach(element => {
+    element.addEventListener("click", e => shout(e));
+  });
+
+  return {
+    render,
+    getCell,
+    getCellValues,
+    isFull,
+    isEmpty,
+    shout,
+    addListener,
+    wipe
+  };
+})();
+
+const makePlayer = (name, mark) => {
+  const winningPatterns = [
     [0, 1, 2],
     [3, 4, 5],
     [6, 7, 8],
@@ -29,146 +67,160 @@ const Player = (name, mark) => {
     [0, 4, 8],
     [2, 4, 6]
   ];
-  const markedSquares = [];
-  const getName = () => name;
-  const getMark = () => mark;
-  const getMarkedSquares = () => markedSquares;
+  const markedPositions = [];
 
-  const play = pos => {
-    markedSquares.push(pos);
-  };
+  const getName = () => name;
+
+  const getMark = () => mark;
+
+  const play = pos => markedPositions.push(pos);
 
   const isWinner = () => {
-    let output = false;
-    winningPositions.forEach(postion => {
-      if (postion.every(i => markedSquares.includes(i))) output = true;
+    let result = false;
+    winningPatterns.forEach(pattern => {
+      if (pattern.every(pos => markedPositions.includes(pos))) result = true;
     });
 
-    return output;
+    return result;
   };
 
   return {
     getName,
     getMark,
-    getMarkedSquares,
     play,
     isWinner
   };
 };
 
-const gameboard = (() => {
-  const squares = [...document.querySelectorAll(".cell")];
-  const squareData = [];
-  const watchers = [];
+const gameInput = (() => {
+  const inputs = [...document.querySelectorAll("input")];
+  const start = document.querySelector("#start");
+  const listeners = [];
 
-  squares.forEach((square, i) => {
-    squareData[i] = Square(i);
-    square.addEventListener("click", e => publish(e));
-  });
+  const shout = () => {
+    if (inputs.every(input => input.value != "")) {
+      let output = {};
+      inputs.forEach(input => {
+        output[input.name] = input.value;
 
-  const addWatcher = obj => watchers.push(obj);
-
-  const publish = e => {
-    if (watchers.length > 0) {
-      var output = e;
-
-      watchers.forEach(watcher => watcher.notify(output));
+        input.setAttribute("disabled", "");
+      });
+      listeners.forEach(listener => listener.listen(output));
     }
   };
 
-  const square = i => squareData[i];
-
-  const render = () => {
-    squares.forEach((square, i) => {
-      square.innerHTML = squareData[i].getValue();
+  const reset = () => {
+    inputs.forEach(input => {
+      input.value = "";
+      input.removeAttribute("disabled")
     });
   };
 
-  const count = () => squareData.length;
+  const setButtonText = str => (start.innerHTML = str);
 
-  const isFull = () => squareData.every(square => square.getValue() != null);
+  const addListener = obj => listeners.push(obj);
+
+  start.addEventListener("click", shout);
 
   return {
-    render,
-    square,
-    addWatcher,
-    count,
-    isFull
+    addListener,
+    setButtonText,
+    reset
   };
 })();
 
 const gameDisplay = (() => {
-  const DOMelement = document.querySelector("#message");
-  const message = "Enter the names of the players";
+  const display = document.querySelector("#message");
 
-  const setMessage = (msg) => message = msg;
-  const render = () => DOMelement.innerHTML = message;
+  let message = "Enter the names of the players and press Start.";
+
+  const setMessage = str => (message = str);
+
+  const render = () => {
+    display.innerHTML = message;
+  };
 
   return {
     setMessage,
     render
-  }
+  };
 })();
 
 const game = (() => {
-  const playerX = Player("X", "X");
-  const playerO = Player("O", "O");
-  const board = gameboard;
+  const board = gameBoard;
   const display = gameDisplay;
-  let running = false;
-  let currentPlayer = playerX;
-  let winner = null;
+  const input = gameInput;
 
-  const playTurn = square => {
-    if (square.getValue() == null) {
-      square.setValue(currentPlayer.getMark());
-      currentPlayer.play(square.getPos());
+  let playerX;
+  let playerO;
+  let currentPlayer;
+  let isRunning = false;
 
-      if (currentPlayer.isWinner()) {
-        winner = currentPlayer;
-        endGame();
-      } else {
-        if (board.isFull()) endGame();
-        else resetRound();
+  const render = () => {
+    board.render();
+    display.render();
+  };
+
+  const listen = e => {
+    if (isRunning) {
+      if (typeof e === 'string') takeTurn(e);
+      if (typeof e === 'object') reset();
+    } else {
+      if (typeof e === 'object') {
+        board.isEmpty() ? start(e) :  reset();
       }
     }
+
+    render();
   };
 
-  const resetRound = () => {
-    let nextPlayer = currentPlayer === playerX ? playerO : playerX;
-
-    display.setMessage(
-      `${nextPlayer.getName()}'s turn, click on where you want to place your mark.`
-    );
-
-    currentPlayer = nextPlayer;
+  const start = obj => {
+    playerX = makePlayer(obj.playerXName, "X");
+    playerO = makePlayer(obj.playerOName, "O");
+    currentPlayer = playerX;
+    isRunning = true;
+    display.setMessage(`${currentPlayer.getName()}'s turn.`);
+    input.setButtonText("Restart");
   };
 
-  const endGame = () => {
-    let msg;
+  const reset = () => {
+    isRunning = false;
+    board.wipe();
+    display.setMessage("Enter the names of the players and press Start.");
+    input.reset();
+    input.setButtonText("Start");
+  };
 
-    if (winner) msg = `${winner.getName()} won!`;
-    else {
-      msg = `It's a tie!`;
+  const takeTurn = posStr => {
+    const pos = parseInt(posStr);
+
+    currentPlayer.play(pos);
+    board.getCell(pos).setValue(currentPlayer.getMark());
+
+    if (currentPlayer.isWinner()) {
+      endGame(currentPlayer);
+    } else if (board.isFull()) {
+      endGame();
+    } else {
+      currentPlayer = currentPlayer == playerO ? playerX : playerO;
+      display.setMessage(`${currentPlayer.getName()}'s turn.`);
+    }
+  };
+
+  const endGame = winner => {
+    if (winner) {
+      display.setMessage(`${winner.getName()} won!`);
+    } else {
+      display.setMessage(`It's a tie!`);
     }
 
-    display.setMessage(msg);
-    running = false;
-  };
-
-  const notify = e => {
-    if (running) {
-      let square = board.square(e.target.dataset.number);
-      playTurn(square);
-    }
-
-    board.render();
+    isRunning = false;
   };
 
   const obj = {
-    notify
+    listen
   };
-  board.addWatcher(obj);
-  board.render();
+  board.addListener(obj);
+  input.addListener(obj);
   return obj;
 })();
